@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>RC//CTRL</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap');
+
+  :root {
+    --bg: #0a0e1a;
+    --panel: #0f1628;
+    --border: #1e3a5f;
+    --accent: #00d4ff;
+    --accent2: #ff6b00;
+    --glow: rgba(0,212,255,0.3);
+    --glow2: rgba(255,107,0,0.3);
+    --text: #c8e6f5;
+    --dim: #4a7a9b;
+    --danger: #ff3b5c;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; touch-action: none; user-select: none; }
+
+  body {
+    background: var(--bg);
+    min-height: 100dvh;
+    display: flex; flex-direction: column; align-items: center;
+    font-family: 'Share Tech Mono', monospace;
+    color: var(--text); overflow: hidden;
+  }
+
+  body::before {
+    content: ''; position: fixed; inset: 0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.07) 2px, rgba(0,0,0,0.07) 4px);
+    pointer-events: none; z-index: 200;
+  }
+
+  /* HEADER */
+  header {
+    width: 100%; display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 16px; border-bottom: 1px solid var(--border);
+    background: var(--panel); flex-shrink: 0;
+  }
+  .logo {
+    font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: 17px;
+    letter-spacing: 3px; color: var(--accent); text-shadow: 0 0 20px var(--glow);
+  }
+  .header-right { display: flex; align-items: center; gap: 8px; }
+  .icon-btn {
+    background: transparent; border: 1px solid var(--border); color: var(--dim);
+    width: 34px; height: 34px; display: flex; align-items: center; justify-content: center;
+    cursor: pointer; font-size: 16px; transition: all 0.2s;
+  }
+  .icon-btn:hover { border-color: var(--accent); color: var(--accent); }
+  #connect-btn {
+    background: transparent; border: 1px solid var(--accent); color: var(--accent);
+    font-family: 'Orbitron', sans-serif; font-size: 10px; letter-spacing: 2px;
+    padding: 8px 12px; cursor: pointer; transition: all 0.2s;
+  }
+  #connect-btn:hover { background: var(--accent); color: var(--bg); box-shadow: 0 0 20px var(--glow); }
+  #connect-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .status-dot {
+    width: 8px; height: 8px; border-radius: 50%; background: #333; transition: all 0.3s; display: inline-block;
+  }
+  .status-dot.connected  { background: #00ff88; box-shadow: 0 0 10px #00ff88; }
+  .status-dot.connecting { background: var(--accent2); box-shadow: 0 0 10px var(--accent2); animation: pulse 0.8s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  /* SETTINGS OVERLAY */
+  #settings-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.75); z-index: 300;
+    align-items: flex-end; justify-content: center;
+  }
+  #settings-overlay.open { display: flex; }
+  #settings-panel {
+    width: 100%; max-width: 480px;
+    background: var(--panel); border-top: 2px solid var(--accent);
+    box-shadow: 0 -10px 60px rgba(0,212,255,0.2);
+    max-height: 85dvh; overflow-y: auto; padding-bottom: 24px;
+  }
+  .settings-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 20px; border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; background: var(--panel); z-index: 1;
+  }
+  .settings-title { font-family: 'Orbitron', sans-serif; font-size: 13px; letter-spacing: 3px; color: var(--accent); }
+  .close-btn { background: transparent; border: none; color: var(--dim); font-size: 20px; cursor: pointer; line-height: 1; }
+  .close-btn:hover { color: var(--text); }
+
+  .settings-section { padding: 16px 20px 0; }
+  .section-label {
+    font-size: 9px; letter-spacing: 3px; color: var(--accent); text-transform: uppercase;
+    margin-bottom: 12px; display: flex; align-items: center; gap: 8px;
+  }
+  .section-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  .field { margin-bottom: 14px; }
+  .field-label { font-size: 10px; color: var(--dim); letter-spacing: 1px; margin-bottom: 6px; display: flex; justify-content: space-between; }
+  .field-label span { color: var(--accent2); font-size: 11px; }
+  .field input[type=text], .field input[type=number] {
+    width: 100%; background: var(--bg); border: 1px solid var(--border);
+    color: var(--text); font-family: 'Share Tech Mono', monospace; font-size: 13px;
+    padding: 10px 12px; outline: none; transition: border-color 0.2s; touch-action: auto;
+  }
+  .field input:focus { border-color: var(--accent); }
+  .field-hint { font-size: 9px; color: var(--dim); margin-top: 4px; letter-spacing: 0.5px; }
+
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+  .grid-cell label { font-size: 9px; color: var(--dim); letter-spacing: 1px; display: block; margin-bottom: 4px; }
+  .grid-cell input {
+    width: 100%; background: var(--bg); border: 1px solid var(--border);
+    color: var(--accent2); font-family: 'Share Tech Mono', monospace; font-size: 13px;
+    padding: 8px 10px; outline: none; text-align: center; touch-action: auto;
+  }
+  .grid-cell input:focus { border-color: var(--accent); }
+
+  .s-slider { margin-bottom: 14px; }
+  .s-slider input[type=range] {
+    -webkit-appearance: none; width: 100%; height: 4px;
+    background: linear-gradient(to right, var(--accent) 0%, var(--accent) var(--sp,30%), var(--border) var(--sp,30%));
+    outline: none; border-radius: 2px;
+  }
+  .s-slider input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%;
+    background: var(--accent); box-shadow: 0 0 10px var(--glow); cursor: pointer;
+  }
+
+  .save-btn {
+    margin: 20px 20px 0; width: calc(100% - 40px);
+    background: var(--accent); border: none; color: var(--bg);
+    font-family: 'Orbitron', sans-serif; font-size: 12px; letter-spacing: 3px;
+    padding: 14px; cursor: pointer; transition: all 0.2s;
+  }
+  .save-btn:hover { box-shadow: 0 0 30px var(--glow); }
+  .reset-btn {
+    margin: 10px 20px 0; width: calc(100% - 40px);
+    background: transparent; border: 1px solid var(--border); color: var(--dim);
+    font-family: 'Share Tech Mono', monospace; font-size: 11px; letter-spacing: 1px;
+    padding: 10px; cursor: pointer; transition: all 0.2s;
+  }
+  .reset-btn:hover { border-color: var(--danger); color: var(--danger); }
+
+  /* MAIN */
+  .main {
+    flex: 1; width: 100%; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 16px; gap: 14px; overflow: hidden;
+  }
+  .telemetry {
+    width: 100%; max-width: 400px;
+    display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;
+  }
+  .tele-box { background: var(--panel); border: 1px solid var(--border); padding: 10px; text-align: center; }
+  .tele-label { font-size: 9px; color: var(--dim); letter-spacing: 2px; text-transform: uppercase; }
+  .tele-val { font-family: 'Orbitron', sans-serif; font-size: 15px; font-weight: 700; color: var(--accent); margin-top: 4px; }
+
+  .joystick-container { position: relative; width: 210px; height: 210px; }
+  .joystick-ring {
+    position: absolute; inset: 0; border-radius: 50%;
+    border: 2px solid var(--border);
+    background: radial-gradient(circle at 40% 35%, #1a2540, var(--panel));
+    box-shadow: inset 0 0 40px rgba(0,0,0,0.5), 0 0 30px rgba(0,212,255,0.1);
+    transition: opacity 0.3s;
+  }
+  .joystick-ring::before, .joystick-ring::after { content: ''; position: absolute; background: var(--border); }
+  .joystick-ring::before { left:50%; top:10%; bottom:10%; width:1px; transform:translateX(-50%); }
+  .joystick-ring::after  { top:50%; left:10%; right:10%; height:1px; transform:translateY(-50%); }
+  .joystick-knob {
+    position: absolute; width: 68px; height: 68px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #2a4a7f, #0f1e3d);
+    border: 2px solid var(--accent);
+    box-shadow: 0 0 20px var(--glow), inset 0 0 15px rgba(0,212,255,0.1);
+    top: 50%; left: 50%; transform: translate(-50%, -50%);
+    cursor: grab; transition: box-shadow 0.1s;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .joystick-knob.active { cursor: grabbing; box-shadow: 0 0 35px var(--glow), 0 0 60px rgba(0,212,255,0.2); }
+  .knob-inner { width: 18px; height: 18px; border-radius: 50%; background: var(--accent); opacity: 0.6; box-shadow: 0 0 10px var(--glow); }
+  .dir-arrows { position: absolute; inset: 0; pointer-events: none; }
+  .arrow { position: absolute; color: var(--dim); font-size: 15px; transition: color 0.1s, text-shadow 0.1s; }
+  .arrow.active { color: var(--accent); text-shadow: 0 0 10px var(--glow); }
+  .arrow-up    { top:8px; left:50%; transform:translateX(-50%); }
+  .arrow-down  { bottom:8px; left:50%; transform:translateX(-50%); }
+  .arrow-left  { left:8px; top:50%; transform:translateY(-50%); }
+  .arrow-right { right:8px; top:50%; transform:translateY(-50%); }
+  .joystick-container.gp-active .joystick-ring { opacity: 0.3; }
+  .joystick-container.gp-active .joystick-knob { border-color: var(--dim); box-shadow: none; }
+
+  .speed-section {
+    width: 100%; max-width: 400px; background: var(--panel);
+    border: 1px solid var(--border); padding: 14px 18px;
+  }
+  .speed-label { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .speed-label span:first-child { font-size: 10px; letter-spacing: 2px; color: var(--dim); }
+  #speed-display { font-family: 'Orbitron', sans-serif; font-size: 18px; font-weight: 700; color: var(--accent2); text-shadow: 0 0 15px var(--glow2); }
+  input[type=range] {
+    -webkit-appearance: none; width: 100%; height: 4px;
+    background: linear-gradient(to right, var(--accent2) 0%, var(--accent2) var(--pct,50%), var(--border) var(--pct,50%));
+    outline: none; border-radius: 2px;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%;
+    background: var(--accent2); box-shadow: 0 0 12px var(--glow2); cursor: pointer;
+  }
+
+  .gamepad-badge {
+    display: none; align-items: center; gap: 6px;
+    background: var(--panel); border: 1px solid #00ff88;
+    padding: 6px 12px; font-size: 10px; letter-spacing: 2px;
+    color: #00ff88; text-shadow: 0 0 10px #00ff88;
+    width: 100%; max-width: 400px; justify-content: center;
+  }
+  .gamepad-badge.visible { display: flex; }
+
+  #log {
+    width: 100%; max-width: 400px; background: var(--panel); border: 1px solid var(--border);
+    padding: 8px 14px; font-size: 10px; color: var(--dim);
+    height: 48px; overflow: hidden;
+    display: flex; flex-direction: column; justify-content: flex-end; gap: 2px;
+  }
+  .log-line.new { color: var(--accent); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">RC//CTRL</div>
+  <div class="header-right">
+    <span class="status-dot" id="dot"></span>
+    <button id="connect-btn" onclick="toggleConnect()">CONNECT</button>
+    <button class="icon-btn" onclick="openSettings()">⚙</button>
+  </div>
+</header>
+
+<!-- Settings Overlay -->
+<div id="settings-overlay" onclick="overlayClick(event)">
+  <div id="settings-panel">
+    <div class="settings-header">
+      <div class="settings-title">⚙ CONFIG</div>
+      <button class="close-btn" onclick="closeSettings()">✕</button>
+    </div>
+
+    <div class="settings-section">
+      <div class="section-label">BLE 設定</div>
+      <div class="field">
+        <div class="field-label">Service UUID</div>
+        <input type="text" id="cfg-service" placeholder="00001a20-0000-1000-8000-00805f9b34fb">
+        <div class="field-hint">128-bit 格式，例：00001a20-0000-1000-8000-00805f9b34fb</div>
+      </div>
+      <div class="field">
+        <div class="field-label">Characteristic UUID</div>
+        <input type="text" id="cfg-char" placeholder="00002a91-0000-1000-8000-00805f9b34fb">
+        <div class="field-hint">寫入指令的 characteristic</div>
+      </div>
+      <div class="field">
+        <div class="field-label">裝置名稱前綴（留空 = 顯示全部裝置）</div>
+        <input type="text" id="cfg-nameprefix" placeholder="G4">
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="section-label">發送頻率</div>
+      <div class="field">
+        <div class="field-label">Hz <span id="hz-display">20 Hz</span></div>
+        <div class="s-slider">
+          <input type="range" id="cfg-hz" min="5" max="60" value="20" oninput="onHzChange(this.value)">
+        </div>
+        <div class="field-hint">建議 20–50Hz，越高越即時但 BLE 負擔越大</div>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="section-label">馬達指令值（十進位）</div>
+      <div class="grid3">
+        <div class="grid-cell"><label>前進最大 FWD</label><input type="number" id="cfg-fwd"  value="25" min="1" max="255"></div>
+        <div class="grid-cell"><label>停止 STOP</label>    <input type="number" id="cfg-stop" value="9"  min="0" max="255"></div>
+        <div class="grid-cell"><label>後退 REV</label>     <input type="number" id="cfg-rev"  value="8"  min="0" max="255"></div>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="section-label">指令封包格式</div>
+      <div class="field">
+        <div class="field-label">Header bytes（hex 空格分隔）</div>
+        <input type="text" id="cfg-header" value="FA C1 04 01">
+        <div class="field-hint">結構：[Header] [左馬達] 01 [右馬達] [Tail]</div>
+      </div>
+      <div class="field">
+        <div class="field-label">Tail bytes（hex 空格分隔）</div>
+        <input type="text" id="cfg-tail" value="00 00 64">
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="section-label">搖桿設定</div>
+      <div class="grid2">
+        <div class="grid-cell"><label>左右 Axis index</label><input type="number" id="cfg-ax-x" value="0" min="0" max="7"></div>
+        <div class="grid-cell"><label>上下 Axis index</label><input type="number" id="cfg-ax-y" value="1" min="0" max="7"></div>
+      </div>
+      <div class="field">
+        <div class="field-label">Dead Zone <span id="dz-display">0.12</span></div>
+        <div class="s-slider">
+          <input type="range" id="cfg-dz" min="0" max="40" value="12" oninput="onDzChange(this.value)">
+        </div>
+        <div class="field-hint">搖桿靜止時的忽略範圍，避免漂移</div>
+      </div>
+    </div>
+
+    <button class="save-btn" onclick="saveSettings()">💾 SAVE &amp; APPLY</button>
+    <button class="reset-btn" onclick="resetSettings()">↺ 恢復預設值</button>
+  </div>
+</div>
+
+<!-- Main UI -->
+<div class="main">
+  <div class="telemetry">
+    <div class="tele-box">
+      <div class="tele-label">THROTTLE</div>
+      <div class="tele-val" id="t-throttle">0%</div>
+    </div>
+    <div class="tele-box">
+      <div class="tele-label">DIRECTION</div>
+      <div class="tele-val" id="t-dir" style="font-size:11px">STOP</div>
+    </div>
+    <div class="tele-box">
+      <div class="tele-label">TX PKT</div>
+      <div class="tele-val" id="t-pkt">0</div>
+    </div>
+  </div>
+
+  <div class="gamepad-badge" id="gp-badge">🎮 GAMEPAD ACTIVE</div>
+
+  <div class="joystick-container" id="joystick-area">
+    <div class="joystick-ring"></div>
+    <div class="dir-arrows">
+      <span class="arrow arrow-up"    id="a-up">▲</span>
+      <span class="arrow arrow-down"  id="a-down">▼</span>
+      <span class="arrow arrow-left"  id="a-left">◀</span>
+      <span class="arrow arrow-right" id="a-right">▶</span>
+    </div>
+    <div class="joystick-knob" id="knob"><div class="knob-inner"></div></div>
+  </div>
+
+  <div class="speed-section">
+    <div class="speed-label">
+      <span>SPEED LIMIT</span>
+      <span id="speed-display">50%</span>
+    </div>
+    <input type="range" id="speed-slider" min="10" max="100" value="50" oninput="updateSpeed(this.value)">
+  </div>
+
+  <div id="log">
+    <div class="log-line">// RC CONTROLLER READY</div>
+    <div class="log-line">// TAP ⚙ TO CONFIGURE</div>
+  </div>
+</div>
+
+<script>
+// ── Defaults ──────────────────────────────────────────────────
+const DEFAULTS = {
+  serviceUUID: '00001a20-0000-1000-8000-00805f9b34fb',
+  charUUID:    '00002a91-0000-1000-8000-00805f9b34fb',
+  namePrefix:  'G4',
+  hz:          20,
+  motorFwd:    25,
+  motorStop:   9,
+  motorRev:    8,
+  header:      'FA C1 04 01',
+  tail:        '00 00 64',
+  axisX:       0,
+  axisY:       1,
+  deadZone:    0.12,
+};
+
+function loadConfig() {
+  try {
+    const s = localStorage.getItem('rc_config');
+    return s ? Object.assign({}, DEFAULTS, JSON.parse(s)) : Object.assign({}, DEFAULTS);
+  } catch { return Object.assign({}, DEFAULTS); }
+}
+
+let cfg = loadConfig();
+
+// ── BLE State ─────────────────────────────────────────────────
+let device = null, char = null, connected = false;
+let pktCount = 0, sendInterval = null, speedLimit = 0.5;
+let currentLeft, currentRight;
+
+function resetMotors() { currentLeft = cfg.motorStop; currentRight = cfg.motorStop; }
+resetMotors();
+
+function buildCmd(left, right) {
+  const h = cfg.header.trim().split(/\s+/).map(x => parseInt(x, 16));
+  const t = cfg.tail.trim().split(/\s+/).map(x => parseInt(x, 16));
+  return new Uint8Array([...h, left, 0x01, right, ...t]);
+}
+
+// ── BLE Connect ───────────────────────────────────────────────
+async function toggleConnect() {
+  if (connected) { disconnect(); return; }
+  setStatus('connecting');
+  try {
+    const opts = cfg.namePrefix.trim()
+      ? { filters: [{ namePrefix: cfg.namePrefix.trim() }], optionalServices: [cfg.serviceUUID] }
+      : { acceptAllDevices: true, optionalServices: [cfg.serviceUUID] };
+
+    device = await navigator.bluetooth.requestDevice(opts);
+    device.addEventListener('gattserverdisconnected', onDisconnect);
+    const server = await device.gatt.connect();
+
+    let svc;
+    try { svc = await server.getPrimaryService(cfg.serviceUUID); }
+    catch { svc = await server.getPrimaryService(parseInt(cfg.serviceUUID.replace(/-/g,'').slice(4,8), 16)); }
+
+    try { char = await svc.getCharacteristic(cfg.charUUID); }
+    catch { char = await svc.getCharacteristic(parseInt(cfg.charUUID.replace(/-/g,'').slice(4,8), 16)); }
+
+    connected = true;
+    setStatus('connected');
+    addLog(`PAIRED: ${device.name}`);
+    startSendLoop();
+  } catch(e) {
+    setStatus('offline');
+    addLog(`ERR: ${e.message.slice(0,45)}`);
+  }
+}
+
+function disconnect() {
+  if (device && device.gatt.connected) device.gatt.disconnect();
+  onDisconnect();
+}
+function onDisconnect() {
+  connected = false; char = null;
+  stopSendLoop(); setStatus('offline'); addLog('DISCONNECTED');
+}
+function startSendLoop() {
+  stopSendLoop();
+  sendInterval = setInterval(sendCmd, Math.round(1000 / cfg.hz));
+}
+function stopSendLoop() { clearInterval(sendInterval); }
+let sending = false;
+async function sendCmd() {
+  if (!char || sending) return;
+  sending = true;
+  try {
+    const data = buildCmd(currentLeft, currentRight);
+    if (char.properties.write) {
+      await char.writeValue(data);
+    } else {
+      await char.writeValueWithoutResponse(data);
+    }
+    pktCount++;
+    document.getElementById('t-pkt').textContent = pktCount;
+  } catch(e) {
+    addLog('TX ERR: ' + e.message.slice(0,30));
+  } finally {
+    sending = false;
+  }
+}
+
+// ── Virtual Joystick ──────────────────────────────────────────
+const area = document.getElementById('joystick-area');
+const knob = document.getElementById('knob');
+const R = 73;
+let dragging = false, originX = 0, originY = 0;
+
+function getCenter() {
+  const r = area.getBoundingClientRect();
+  return { x: r.left + r.width/2, y: r.top + r.height/2 };
+}
+function pointerStart(e) {
+  if (gamepadIndex !== null) return;
+  dragging = true; knob.classList.add('active');
+  const c = getCenter(); originX = c.x; originY = c.y;
+  pointerMove(e);
+}
+function pointerMove(e) {
+  if (!dragging) return;
+  e.preventDefault();
+  const pt = e.touches ? e.touches[0] : e;
+  let dx = pt.clientX - originX, dy = pt.clientY - originY;
+  const d = Math.sqrt(dx*dx + dy*dy);
+  if (d > R) { dx = dx/d*R; dy = dy/d*R; }
+  knob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+  const nx = dx/R, ny = -dy/R;
+  updateMotors(nx, ny); updateArrows(nx, ny); updateTelemetry(nx, ny);
+}
+function pointerEnd() {
+  if (!dragging) return;
+  dragging = false; knob.classList.remove('active');
+  knob.style.transform = 'translate(-50%, -50%)';
+  resetMotors(); updateArrows(0,0);
+  document.getElementById('t-dir').textContent = 'STOP';
+  document.getElementById('t-throttle').textContent = '0%';
+}
+area.addEventListener('mousedown',  pointerStart);
+area.addEventListener('touchstart', pointerStart, { passive: false });
+document.addEventListener('mousemove',  pointerMove);
+document.addEventListener('touchmove',  pointerMove, { passive: false });
+document.addEventListener('mouseup',   pointerEnd);
+document.addEventListener('touchend',  pointerEnd);
+
+// ── Motor Logic ───────────────────────────────────────────────
+function updateMotors(nx, ny) {
+  const max = cfg.motorFwd * speedLimit;
+  currentLeft  = motorByte(ny*max - nx*max*0.8);
+  currentRight = motorByte(ny*max + nx*max*0.8);
+}
+function motorByte(v) {
+  if (Math.abs(v) < 1.5) return cfg.motorStop;
+  if (v > 0) return Math.round(cfg.motorStop + (v/(cfg.motorFwd*speedLimit))*(cfg.motorFwd-cfg.motorStop));
+  return cfg.motorRev;
+}
+function updateArrows(nx, ny) {
+  document.getElementById('a-up').classList.toggle('active', ny > 0.2);
+  document.getElementById('a-down').classList.toggle('active', ny < -0.2);
+  document.getElementById('a-right').classList.toggle('active', nx > 0.2);
+  document.getElementById('a-left').classList.toggle('active', nx < -0.2);
+}
+function updateTelemetry(nx, ny) {
+  document.getElementById('t-throttle').textContent = Math.round(Math.sqrt(nx*nx+ny*ny)*100) + '%';
+  let dir = 'STOP';
+  if (Math.abs(nx)<0.2 && ny>0.2) dir='FWD';
+  else if (Math.abs(nx)<0.2 && ny<-0.2) dir='REV';
+  else if (nx>0.2 && ny>0.2) dir='FWD-R';
+  else if (nx<-0.2 && ny>0.2) dir='FWD-L';
+  else if (nx>0.2 && ny<-0.2) dir='REV-R';
+  else if (nx<-0.2 && ny<-0.2) dir='REV-L';
+  else if (nx>0.3) dir='RIGHT';
+  else if (nx<-0.3) dir='LEFT';
+  document.getElementById('t-dir').textContent = dir;
+}
+
+// ── Speed Slider ──────────────────────────────────────────────
+function updateSpeed(v) {
+  speedLimit = v/100;
+  document.getElementById('speed-display').textContent = v + '%';
+  document.getElementById('speed-slider').style.setProperty('--pct', v+'%');
+}
+updateSpeed(50);
+
+// ── Gamepad ───────────────────────────────────────────────────
+let gamepadIndex = null, gpLoop = null;
+window.addEventListener('gamepadconnected', (e) => {
+  gamepadIndex = e.gamepad.index;
+  document.getElementById('gp-badge').classList.add('visible');
+  document.getElementById('joystick-area').classList.add('gp-active');
+  addLog(`GAMEPAD: ${e.gamepad.id.slice(0,28)}`);
+  if (!gpLoop) gpLoop = requestAnimationFrame(readGamepad);
+});
+window.addEventListener('gamepaddisconnected', (e) => {
+  if (e.gamepad.index !== gamepadIndex) return;
+  gamepadIndex = null;
+  document.getElementById('gp-badge').classList.remove('visible');
+  document.getElementById('joystick-area').classList.remove('gp-active');
+  addLog('GAMEPAD DISCONNECTED');
+  if (gpLoop) { cancelAnimationFrame(gpLoop); gpLoop = null; }
+  knob.style.transform = 'translate(-50%, -50%)'; resetMotors();
+});
+function readGamepad() {
+  gpLoop = requestAnimationFrame(readGamepad);
+  if (gamepadIndex === null) return;
+  const gp = navigator.getGamepads()[gamepadIndex];
+  if (!gp) return;
+  const dz = v => Math.abs(v) < cfg.deadZone ? 0 : v;
+  const nx = dz(gp.axes[cfg.axisX]);
+  const ny = dz(-gp.axes[cfg.axisY]);
+  knob.style.transform = `translate(calc(-50% + ${nx*R}px), calc(-50% + ${-ny*R}px))`;
+  updateMotors(nx, ny); updateArrows(nx, ny); updateTelemetry(nx, ny);
+}
+
+// ── Settings ──────────────────────────────────────────────────
+function openSettings() {
+  document.getElementById('cfg-service').value    = cfg.serviceUUID;
+  document.getElementById('cfg-char').value       = cfg.charUUID;
+  document.getElementById('cfg-nameprefix').value = cfg.namePrefix;
+  document.getElementById('cfg-fwd').value        = cfg.motorFwd;
+  document.getElementById('cfg-stop').value       = cfg.motorStop;
+  document.getElementById('cfg-rev').value        = cfg.motorRev;
+  document.getElementById('cfg-header').value     = cfg.header;
+  document.getElementById('cfg-tail').value       = cfg.tail;
+  document.getElementById('cfg-ax-x').value       = cfg.axisX;
+  document.getElementById('cfg-ax-y').value       = cfg.axisY;
+  const hz = document.getElementById('cfg-hz');
+  hz.value = cfg.hz; onHzChange(cfg.hz);
+  const dz = document.getElementById('cfg-dz');
+  dz.value = Math.round(cfg.deadZone * 100); onDzChange(dz.value);
+  document.getElementById('settings-overlay').classList.add('open');
+}
+function closeSettings() { document.getElementById('settings-overlay').classList.remove('open'); }
+function overlayClick(e) { if (e.target.id === 'settings-overlay') closeSettings(); }
+
+function onHzChange(v) {
+  document.getElementById('hz-display').textContent = v + ' Hz';
+  document.getElementById('cfg-hz').style.setProperty('--sp', ((v-5)/55*100).toFixed(1)+'%');
+}
+function onDzChange(v) {
+  document.getElementById('dz-display').textContent = (v/100).toFixed(2);
+  document.getElementById('cfg-dz').style.setProperty('--sp', (v/40*100).toFixed(1)+'%');
+}
+
+function saveSettings() {
+  cfg = {
+    serviceUUID: document.getElementById('cfg-service').value.trim().toLowerCase(),
+    charUUID:    document.getElementById('cfg-char').value.trim().toLowerCase(),
+    namePrefix:  document.getElementById('cfg-nameprefix').value.trim(),
+    hz:          parseInt(document.getElementById('cfg-hz').value),
+    motorFwd:    parseInt(document.getElementById('cfg-fwd').value),
+    motorStop:   parseInt(document.getElementById('cfg-stop').value),
+    motorRev:    parseInt(document.getElementById('cfg-rev').value),
+    header:      document.getElementById('cfg-header').value.trim().toUpperCase(),
+    tail:        document.getElementById('cfg-tail').value.trim().toUpperCase(),
+    axisX:       parseInt(document.getElementById('cfg-ax-x').value),
+    axisY:       parseInt(document.getElementById('cfg-ax-y').value),
+    deadZone:    parseInt(document.getElementById('cfg-dz').value) / 100,
+  };
+  localStorage.setItem('rc_config', JSON.stringify(cfg));
+  resetMotors();
+  if (connected) startSendLoop();
+  closeSettings();
+  addLog('CONFIG SAVED ✓');
+}
+
+function resetSettings() {
+  if (!confirm('恢復所有預設值？')) return;
+  cfg = Object.assign({}, DEFAULTS);
+  localStorage.removeItem('rc_config');
+  openSettings();
+  addLog('CONFIG RESET');
+}
+
+// ── Status ────────────────────────────────────────────────────
+function setStatus(s) {
+  document.getElementById('dot').className = 'status-dot' +
+    (s==='connected' ? ' connected' : s==='connecting' ? ' connecting' : '');
+  document.getElementById('connect-btn').textContent = s==='connected' ? 'DISCONNECT' : 'CONNECT';
+  document.getElementById('connect-btn').disabled = s === 'connecting';
+}
+const logEl = document.getElementById('log');
+function addLog(msg) {
+  const line = document.createElement('div');
+  line.className = 'log-line new';
+  line.textContent = '> ' + msg;
+  logEl.appendChild(line);
+  while (logEl.children.length > 3) logEl.removeChild(logEl.firstChild);
+  setTimeout(() => line.classList.remove('new'), 800);
+}
+</script>
+</body>
+</html>
