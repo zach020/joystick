@@ -264,9 +264,9 @@
     <div class="settings-section">
       <div class="section-label">發送頻率</div>
       <div class="field">
-        <div class="field-label">Hz <span id="hz-display">20 Hz</span></div>
+        <div class="field-label">Hz <span id="hz-display">12 Hz</span></div>
         <div class="s-slider">
-          <input type="range" id="cfg-hz" min="5" max="60" value="20" oninput="onHzChange(this.value)">
+          <input type="range" id="cfg-hz" min="5" max="60" value="12" oninput="onHzChange(this.value)">
         </div>
         <div class="field-hint">建議 20–50Hz，越高越即時但 BLE 負擔越大</div>
       </div>
@@ -369,7 +369,7 @@ const DEFAULTS = {
   serviceUUID: '00001a20-0000-1000-8000-00805f9b34fb',
   charUUID:    '00002a91-0000-1000-8000-00805f9b34fb',
   namePrefix:  'G4',
-  hz:          20,
+  hz:          12,
   motorFwd:    25,
   motorStop:   9,
   motorRev:    8,
@@ -441,6 +441,37 @@ function disconnect() {
 function onDisconnect() {
   connected = false; char = null;
   stopSendLoop(); setStatus('offline'); addLog('DISCONNECTED');
+  joystickActive = false; resetMotors();
+  attemptReconnect();
+}
+
+let reconnecting = false;
+async function attemptReconnect() {
+  if (reconnecting || !device) return;
+  reconnecting = true;
+  addLog('RECONNECTING...');
+  try {
+    setStatus('connecting');
+    const server = await device.gatt.connect();
+
+    let svc;
+    try { svc = await server.getPrimaryService(cfg.serviceUUID); }
+    catch { svc = await server.getPrimaryService(parseInt(cfg.serviceUUID.replace(/-/g,'').slice(4,8), 16)); }
+
+    try { char = await svc.getCharacteristic(cfg.charUUID); }
+    catch { char = await svc.getCharacteristic(parseInt(cfg.charUUID.replace(/-/g,'').slice(4,8), 16)); }
+
+    connected = true;
+    setStatus('connected');
+    addLog('RECONNECTED');
+    await sendStopCmd(); // 重連後第一件事：先確保車子是停止狀態
+    startSendLoop();
+  } catch(e) {
+    setStatus('offline');
+    addLog('RECONNECT FAIL: ' + e.message.slice(0,30));
+  } finally {
+    reconnecting = false;
+  }
 }
 let joystickActive = false;
 function startSendLoop() {
@@ -451,12 +482,13 @@ function stopSendLoop() { clearInterval(sendInterval); }
 let sending = false;
 async function sendStopCmd() {
   if (!char) return;
-  // 剎車指令：FA C1 04 01 08 01 18 01 08 02
-  const brake = new Uint8Array(cfg.brakeCmd.trim().split(/\s+/).map(x => parseInt(x, 16)));
+  // 改用正常封包格式送出真正的 STOP 值（不再使用來路不明的自訂剎車位元組，
+  // 避免其位元組其實是「左輪REV+右輪FWD」導致原地打轉）
+  const stopData = buildCmd(cfg.motorStop, cfg.motorStop);
   for (let i = 0; i < 3; i++) {
     try {
-      if (char.properties.write) { await char.writeValue(brake); }
-      else { await char.writeValueWithoutResponse(brake); }
+      if (char.properties.writeWithoutResponse) { await char.writeValueWithoutResponse(stopData); }
+      else { await char.writeValue(stopData); }
       await new Promise(r => setTimeout(r, 20));
     } catch(e) { break; }
   }
@@ -466,10 +498,10 @@ async function sendCmd() {
   sending = true;
   try {
     const data = buildCmd(currentLeft, currentRight);
-    if (char.properties.write) {
-      await char.writeValue(data);
-    } else {
+    if (char.properties.writeWithoutResponse) {
       await char.writeValueWithoutResponse(data);
+    } else {
+      await char.writeValue(data);
     }
     pktCount++;
     document.getElementById('t-pkt').textContent = pktCount;
