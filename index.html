@@ -572,17 +572,17 @@ function pointerEnd(e) {
 }
 
 // 主要事件：Pointer Events 涵蓋 mouse/touch/pen 三種輸入來源
+// 注意：move/up/cancel 綁在 document 上（而不是只靠 knob 的 Pointer Capture），
+// 因為部分行動裝置瀏覽器／WebView 對 setPointerCapture 之後的事件轉發支援不完整，
+// 只綁在 knob 上會導致 pointermove 只在按下瞬間觸發一次，方向就卡在初始角度、
+// 之後怎麼滑都不會更新（這正是「只前進、轉不了」的成因）。
 area.addEventListener('pointerdown',   pointerStart, { passive: false });
-knob.addEventListener('pointermove',   pointerMove,  { passive: false });
-knob.addEventListener('pointerup',     pointerEnd,   { passive: false });
+document.addEventListener('pointermove',   pointerMove,  { passive: false });
+document.addEventListener('pointerup',     pointerEnd,   { passive: false });
 // 關鍵修法：pointercancel 涵蓋系統手勢接管、來電、鎖屏等中斷情境，
 // 這些狀況瀏覽器不會發 pointerup，只會發 pointercancel。
 // 之前只聽 touchend／mouseup，一旦發生 cancel，dragging 就永遠卡在 true。
-knob.addEventListener('pointercancel', pointerEnd,   { passive: false });
-// area 也一併監聽，避免快速移動時事件目標跳到 area 而漏接
-area.addEventListener('pointermove',   pointerMove,  { passive: false });
-area.addEventListener('pointerup',     pointerEnd,   { passive: false });
-area.addEventListener('pointercancel', pointerEnd,   { passive: false });
+document.addEventListener('pointercancel', pointerEnd,   { passive: false });
 
 // ── 多重安全網：任何「手指狀態不明」的情境，一律強制停止 ──────
 // 1. App 切到背景 / 分頁被隱藏
