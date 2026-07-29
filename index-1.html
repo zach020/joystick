@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>RC//CTRL</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap');
+
+  :root {
+    --bg: #0a0e1a;
+    --panel: #0f1628;
+    --border: #1e3a5f;
+    --accent: #00d4ff;
+    --accent2: #ff6b00;
+    --glow: rgba(0,212,255,0.3);
+    --glow2: rgba(255,107,0,0.3);
+    --text: #c8e6f5;
+    --dim: #4a7a9b;
+    --danger: #ff3b5c;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; touch-action: none; user-select: none; -webkit-user-select: none; }
+
+  body {
+    background: var(--bg);
+    min-height: 100dvh;
+    display: flex; flex-direction: column; align-items: center;
+    font-family: 'Share Tech Mono', monospace;
+    color: var(--text); overflow: hidden;
+  }
+
+  body::before {
+    content: ''; position: fixed; inset: 0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.07) 2px, rgba(0,0,0,0.07) 4px);
+    pointer-events: none; z-index: 200;
+  }
+
+  header {
+    width: 100%; display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 16px; border-bottom: 1px solid var(--border);
+    background: var(--panel); flex-shrink: 0;
+  }
+  .logo {
+    font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: 17px;
+    letter-spacing: 3px; color: var(--accent); text-shadow: 0 0 20px var(--glow);
+  }
+  .header-right { display: flex; align-items: center; gap: 8px; }
+  .icon-btn {
+    background: transparent; border: 1px solid var(--border); color: var(--dim);
+    width: 34px; height: 34px; display: flex; align-items: center; justify-content: center;
+    cursor: pointer; font-size: 16px; transition: all 0.2s;
+  }
+  .icon-btn:hover { border-color: var(--accent); color: var(--accent); }
+  #connect-btn {
+    background: transparent; border: 1px solid var(--accent); color: var(--accent);
+    font-family: 'Orbitron', sans-serif; font-size: 10px; letter-spacing: 2px;
+    padding: 8px 12px; cursor: pointer; transition: all 0.2s;
+  }
+  #connect-btn:hover { background: var(--accent); color: var(--bg); box-shadow: 0 0 20px var(--glow); }
+  #connect-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .status-dot {
+    width: 8px; height: 8px; border-radius: 50%; background: #333; transition: all 0.3s; display: inline-block;
+  }
+  .status-dot.connected  { background: #00ff88; box-shadow: 0 0 10px #00ff88; }
+  .status-dot.connecting { background: var(--accent2); box-shadow: 0 0 10px var(--accent2); animation: pulse 0.8s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  #settings-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.75); z-index: 300;
+    align-items: flex-start; justify-content: center;
+  }
+  #settings-overlay.open { display: flex; }
+  #settings-panel {
+    width: 100%; max-width: 480px;
+    background: var(--panel); border-top: 2px solid var(--accent);
+    box-shadow: 0 -10px 60px rgba(0,212,255,0.2);
+    height: 100dvh; overflow-y: auto; padding-bottom: 40px;
+  }
+  .settings-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 20px; border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; background: var(--panel); z-index: 1;
+  }
+  .settings-title { font-family: 'Orbitron', sans-serif; font-size: 15px; letter-spacing: 3px; color: var(--accent); }
+  .close-btn { background: transparent; border: none; color: var(--dim); font-size: 20px; cursor: pointer; line-height: 1; }
+  .close-btn:hover { color: var(--text); }
+
+  .settings-section { padding: 20px 20px 0; }
+  .section-label {
+    font-size: 11px; letter-spacing: 2px; color: var(--accent); text-transform: uppercase;
+    margin-bottom: 14px; display: flex; align-items: center; gap: 8px;
+  }
+  .section-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  .field { margin-bottom: 18px; }
+  .field-label { font-size: 12px; color: var(--dim); letter-spacing: 1px; margin-bottom: 8px; display: flex; justify-content: space-between; }
+  .field-label span { color: var(--accent2); font-size: 11px; }
+  .field input[type=text], .field input[type=number] {
+    width: 100%; background: var(--bg); border: 1px solid var(--border);
+    color: var(--text); font-family: 'Share Tech Mono', monospace; font-size: 14px;
+    padding: 13px 14px; outline: none; transition: border-color 0.2s; touch-action: auto;
+  }
+  .field input:focus { border-color: var(--accent); }
+  .field-hint { font-size: 11px; color: var(--dim); margin-top: 6px; letter-spacing: 0.5px; }
+
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+  .grid-cell label { font-size: 11px; color: var(--dim); letter-spacing: 1px; display: block; margin-bottom: 6px; }
+  .grid-cell input {
+    width: 100%; background: var(--bg); border: 1px solid var(--border);
+    color: var(--accent2); font-family: 'Share Tech Mono', monospace; font-size: 15px;
+    padding: 12px 8px; outline: none; text-align: center; touch-action: auto;
+  }
+  .grid-cell input:focus { border-color: var(--accent); }
+
+  .s-slider { margin-bottom: 14px; }
+  .s-slider input[type=range] {
+    -webkit-appearance: none; width: 100%; height: 4px;
+    background: linear-gradient(to right, var(--accent) 0%, var(--accent) var(--sp,30%), var(--border) var(--sp,30%));
+    outline: none; border-radius: 2px;
+  }
+  .s-slider input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 26px; height: 26px; border-radius: 50%;
+    background: var(--accent); box-shadow: 0 0 10px var(--glow); cursor: pointer;
+  }
+
+  .save-btn {
+    margin: 24px 20px 0; width: calc(100% - 40px);
+    background: var(--accent); border: none; color: var(--bg);
+    font-family: 'Orbitron', sans-serif; font-size: 14px; letter-spacing: 3px;
+    padding: 18px; cursor: pointer; transition: all 0.2s;
+  }
+  .save-btn:hover { box-shadow: 0 0 30px var(--glow); }
+  .reset-btn {
+    margin: 12px 20px 0; width: calc(100% - 40px);
+    background: transparent; border: 1px solid var(--border); color: var(--dim);
+    font-family: 'Share Tech Mono', monospace; font-size: 13px; letter-spacing: 1px;
+    padding: 14px; cursor: pointer; transition: all 0.2s;
+  }
+  .reset-btn:hover { border-color: var(--danger); color: var(--danger); }
+
+  .main {
+    flex: 1; width: 100%; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 16px; gap: 16px; overflow: hidden;
+  }
+  .telemetry {
+    width: 100%; max-width: 380px;
+    display: grid; grid-template-columns: 1fr 1fr 1.3fr; gap: 8px;
+  }
+  .tele-box { background: var(--panel); border: 1px solid var(--border); padding: 10px; text-align: center; overflow: hidden; }
+  .tele-label { font-size: 9px; color: var(--dim); letter-spacing: 2px; text-transform: uppercase; }
+  .tele-val { font-family: 'Orbitron', sans-serif; font-size: 14px; font-weight: 700; color: var(--accent); margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  .gamepad-badge {
+    display: none; align-items: center; gap: 6px;
+    background: var(--panel); border: 1px solid #00ff88;
+    padding: 6px 12px; font-size: 10px; letter-spacing: 2px;
+    color: #00ff88; text-shadow: 0 0 10px #00ff88;
+    width: 100%; max-width: 380px; justify-content: center;
+  }
+  .gamepad-badge.visible { display: flex; }
+
+  /* D-PAD */
+  .dpad {
+    display: grid;
+    grid-template-columns: 70px 70px 70px;
+    grid-template-rows: 70px 70px 70px;
+    gap: 8px;
+  }
+  .dpad-btn {
+    background: radial-gradient(circle at 35% 30%, #16223d, #0d1526);
+    border: 2px solid var(--border);
+    color: var(--dim);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 26px; cursor: pointer;
+    transition: all 0.08s;
+  }
+  .dpad-btn.up    { grid-column: 2; grid-row: 1; }
+  .dpad-btn.left  { grid-column: 1; grid-row: 2; }
+  .dpad-btn.stop  { grid-column: 2; grid-row: 2; font-size: 12px; letter-spacing: 1px; font-family: 'Orbitron', sans-serif; }
+  .dpad-btn.right { grid-column: 3; grid-row: 2; }
+  .dpad-btn.down  { grid-column: 2; grid-row: 3; }
+  .dpad-btn.blank { visibility: hidden; }
+  .dpad-btn.active {
+    border-color: var(--accent); color: var(--accent);
+    box-shadow: 0 0 20px var(--glow), inset 0 0 15px rgba(0,212,255,0.15);
+    background: radial-gradient(circle at 35% 30%, #1d3358, #0f1e3d);
+  }
+  .dpad-btn.stop.active {
+    border-color: var(--danger); color: var(--danger);
+    box-shadow: 0 0 20px rgba(255,59,92,0.4);
+  }
+
+  .sp-row {
+    width: 100%; max-width: 380px;
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;
+  }
+  .sp-btn {
+    background: var(--panel); border: 1px solid var(--border); color: var(--dim);
+    padding: 12px 4px; font-size: 10px; letter-spacing: 1px; text-align: center;
+    cursor: pointer; transition: all 0.08s; display: flex; flex-direction: column; gap: 4px; align-items: center;
+  }
+  .sp-btn .ic { font-size: 18px; }
+  .sp-btn.pressed {
+    border-color: var(--accent2); color: var(--accent2);
+    box-shadow: 0 0 18px var(--glow2);
+  }
+
+  .hz-row {
+    width: 100%; max-width: 380px; background: var(--panel);
+    border: 1px solid var(--border); padding: 12px 16px;
+  }
+  .hz-label { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .hz-label span:first-child { font-size: 10px; letter-spacing: 2px; color: var(--dim); }
+  #hz-live-display { font-family: 'Orbitron', sans-serif; font-size: 15px; font-weight: 700; color: var(--accent2); text-shadow: 0 0 12px var(--glow2); }
+  input[type=range] {
+    -webkit-appearance: none; width: 100%; height: 4px;
+    background: linear-gradient(to right, var(--accent2) 0%, var(--accent2) var(--pct,50%), var(--border) var(--pct,50%));
+    outline: none; border-radius: 2px;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%;
+    background: var(--accent2); box-shadow: 0 0 12px var(--glow2); cursor: pointer;
+  }
+
+  #log {
+    width: 100%; max-width: 380px; background: var(--panel); border: 1px solid var(--border);
+    padding: 8px 14px; font-size: 10px; color: var(--dim);
+    height: 48px; overflow: hidden;
+    display: flex; flex-direction: column; justify-content: flex-end; gap: 2px;
+  }
+  .log-line.new { color: var(--accent); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">RC//CTRL</div>
+  <div class="header-right">
+    <span class="status-dot" id="dot"></span>
+    <button id="connect-btn" onclick="toggleConnect()">CONNECT</button>
+    <button class="icon-btn" onclick="openSettings()">⚙</button>
+  </div>
+</header>
+
+<!-- Settings Overlay -->
+<div id="settings-overlay" onclick="overlayClick(event)">
+  <div id="settings-panel">
+    <div class="settings-header">
+      <div class="settings-title">⚙ CONFIG</div>
+      <button class="close-btn" onclick="closeSettings()">✕</button>
+    </div>
+
+    <div class="settings-section">
+      <div class="section-label">BLE 設定</div>
+      <div class="field">
+        <div class="field-label">Service UUID</div>
+        <input type="text" id="cfg-service" placeholder="00001a20-0000-1000-8000-00805f9b34fb">
+      </div>
+      <div class="field">
+        <div class="field-label">Characteristic UUID</div>
+        <input type="text" id="cfg-char" placeholder="00002a91-0000-1000-8000-00805f9b34fb">
+      </div>
+      <div class="field">
+        <div class="field-label">裝置名稱前綴（留空 = 顯示全部裝置）</div>
+        <input type="text" id="cfg-nameprefix" placeholder="G4">
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="section-label">發送頻率（長按持續送出時）</div>
+      <div class="field">
+        <div class="field-label">Hz <span id="hz-display">15 Hz</span></div>
+        <div class="s-slider">
+          <input type="range" id="cfg-hz" min="5" max="40" value="15" oninput="onHzChange(this.value)">
+        </div>
+        <div class="field-hint">按住方向鍵時，每秒重複送出幾次同一組指令</div>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="section-label">D-Pad 方向指令（hex，長按持續送出）</div>
+      <div class="field">
+        <div class="field-label">▲ 前進 FWD</div>
+        <input type="text" id="cfg-cmd-fwd" value="FA C1 04 01 19 01 19 00 00 64">
+      </div>
+      <div class="field">
+        <div class="field-label">▼ 後退 REV</div>
+        <input type="text" id="cfg-cmd-rev" value="FA C1 04 01 0A 01 04 00 00 64">
+      </div>
+      <div class="field">
+        <div class="field-label">◀ 左轉 LEFT</div>
+        <input type="text" id="cfg-cmd-left" value="FA C1 04 01 02 01 09 00 00 64">
+      </div>
+      <div class="field">
+        <div class="field-label">▶ 右轉 RIGHT</div>
+        <input type="text" id="cfg-cmd-right" value="FA C1 04 01 09 01 04 00 00 64">
+      </div>
+      <div class="field">
+        <div class="field-label">■ 停止 STOP</div>
+        <input type="text" id="cfg-cmd-stop" value="FA C1 04 01 00 01 00 00 00 64">
+        <div class="field-hint">放開方向鍵時送出，讓車子真正停止</div>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="section-label">特殊動作指令（hex，單次點擊）</div>
+      <div class="field">
+        <div class="field-label">🦷 動作A / SP1</div>
+        <input type="text" id="cfg-cmd-sp1" value="FA C1 04 00 00 00 00 01 1D FF">
+      </div>
+      <div class="field">
+        <div class="field-label">💢 動作B / SP2</div>
+        <input type="text" id="cfg-cmd-sp2" value="FA C1 04 00 00 00 00 01 10 FF">
+      </div>
+      <div class="field">
+        <div class="field-label">⚡ 動作C / SP3</div>
+        <input type="text" id="cfg-cmd-sp3" value="FA C1 04 01 0B 01 1B 00 00 14">
+      </div>
+      <div class="field">
+        <div class="field-label">🎯 特殊 / SP4</div>
+        <input type="text" id="cfg-cmd-sp4" value="FA C1 04 01 08 01 09 00 00 64">
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="section-label">搖桿手把（選用）</div>
+      <div class="grid2">
+        <div class="grid-cell"><label>左右 Axis index</label><input type="number" id="cfg-ax-x" value="0" min="0" max="7"></div>
+        <div class="grid-cell"><label>上下 Axis index</label><input type="number" id="cfg-ax-y" value="1" min="0" max="7"></div>
+      </div>
+      <div class="field">
+        <div class="field-label">Dead Zone <span id="dz-display">0.35</span></div>
+        <div class="s-slider">
+          <input type="range" id="cfg-dz" min="0" max="80" value="35" oninput="onDzChange(this.value)">
+        </div>
+        <div class="field-hint">搖桿推超過這個比例才判定為某個方向，避免誤觸</div>
+      </div>
+    </div>
+
+    <button class="save-btn" onclick="saveSettings()">💾 SAVE &amp; APPLY</button>
+    <button class="reset-btn" onclick="resetSettings()">↺ 恢復預設值</button>
+  </div>
+</div>
+
+<!-- Main UI -->
+<div class="main">
+  <div class="telemetry">
+    <div class="tele-box">
+      <div class="tele-label">DIRECTION</div>
+      <div class="tele-val" id="t-dir">STOP</div>
+    </div>
+    <div class="tele-box">
+      <div class="tele-label">TX PKT</div>
+      <div class="tele-val" id="t-pkt">0</div>
+    </div>
+    <div class="tele-box">
+      <div class="tele-label">LAST CMD</div>
+      <div class="tele-val" id="t-lastcmd" style="font-size:9px">--</div>
+    </div>
+  </div>
+
+  <div class="gamepad-badge" id="gp-badge">🎮 GAMEPAD ACTIVE</div>
+
+  <div class="dpad" id="dpad">
+    <div class="dpad-btn blank"></div>
+    <div class="dpad-btn up" id="dpad-FWD">▲</div>
+    <div class="dpad-btn blank"></div>
+    <div class="dpad-btn left" id="dpad-LEFT">◀</div>
+    <div class="dpad-btn stop" id="dpad-STOP">STOP</div>
+    <div class="dpad-btn right" id="dpad-RIGHT">▶</div>
+    <div class="dpad-btn blank"></div>
+    <div class="dpad-btn down" id="dpad-REV">▼</div>
+    <div class="dpad-btn blank"></div>
+  </div>
+
+  <div class="sp-row">
+    <div class="sp-btn" id="sp-SP1"><span class="ic">🦷</span>動作A</div>
+    <div class="sp-btn" id="sp-SP2"><span class="ic">💢</span>動作B</div>
+    <div class="sp-btn" id="sp-SP3"><span class="ic">⚡</span>動作C</div>
+    <div class="sp-btn" id="sp-SP4"><span class="ic">🎯</span>特殊</div>
+  </div>
+
+  <div class="hz-row">
+    <div class="hz-label">
+      <span>SEND RATE</span>
+      <span id="hz-live-display">15 Hz</span>
+    </div>
+    <input type="range" id="hz-slider" min="5" max="40" value="15" oninput="updateHzLive(this.value)">
+  </div>
+
+  <div id="log">
+    <div class="log-line">// RC CONTROLLER READY (D-PAD MODE)</div>
+    <div class="log-line">// TAP ⚙ TO CONFIGURE</div>
+  </div>
+</div>
+
+<script>
+// ── Defaults ──────────────────────────────────────────────────
+// 這些指令值是直接照設備實測的協定表填入的完整封包（不再用公式內插計算）。
+const DEFAULTS = {
+  serviceUUID: '00001a20-0000-1000-8000-00805f9b34fb',
+  charUUID:    '00002a91-0000-1000-8000-00805f9b34fb',
+  namePrefix:  'G4',
+  hz:          15,
+  axisX:       0,
+  axisY:       1,
+  deadZone:    0.35,
+  cmdFWD:   'FA C1 04 01 19 01 19 00 00 64',
+  cmdREV:   'FA C1 04 01 0A 01 04 00 00 64',
+  cmdLEFT:  'FA C1 04 01 02 01 09 00 00 64',
+  cmdRIGHT: 'FA C1 04 01 09 01 04 00 00 64',
+  cmdSTOP:  'FA C1 04 01 00 01 00 00 00 64',
+  cmdSP1:   'FA C1 04 00 00 00 00 01 1D FF',
+  cmdSP2:   'FA C1 04 00 00 00 00 01 10 FF',
+  cmdSP3:   'FA C1 04 01 0B 01 1B 00 00 14',
+  cmdSP4:   'FA C1 04 01 08 01 09 00 00 64',
+};
+
+function loadConfig() {
+  try {
+    const s = localStorage.getItem('rc_config_dpad');
+    return s ? Object.assign({}, DEFAULTS, JSON.parse(s)) : Object.assign({}, DEFAULTS);
+  } catch { return Object.assign({}, DEFAULTS); }
+}
+let cfg = loadConfig();
+
+function parseHex(str) {
+  return new Uint8Array(str.trim().split(/\s+/).filter(Boolean).map(x => parseInt(x, 16)));
+}
+
+// ── BLE State ─────────────────────────────────────────────────
+let device = null, char = null, connected = false;
+let pktCount = 0;
+
+// ── BLE Write Queue ───────────────────────────────────────────
+// 所有寫入都排隊經過同一把鎖，避免「按住方向」的重複送出跟「放開時的
+// STOP」互相搶著寫入同一個 characteristic 而導致某一筆被吃掉。
+let busy = false;
+async function writeBLE(data) {
+  if (!char) return false;
+  const start = Date.now();
+  while (busy) {
+    if (Date.now() - start > 300) { addLog('WRITE BUSY TIMEOUT'); return false; }
+    await new Promise(r => setTimeout(r, 5));
+  }
+  busy = true;
+  try {
+    if (char.properties.writeWithoutResponse) {
+      await char.writeValueWithoutResponse(data);
+    } else {
+      await char.writeValue(data);
+    }
+    return true;
+  } catch(e) {
+    addLog('WRITE ERR: ' + e.message.slice(0,30));
+    return false;
+  } finally {
+    busy = false;
+  }
+}
+
+async function sendNamedCmd(name) {
+  const hex = cfg['cmd'+name];
+  if (!hex) return false;
+  const data = parseHex(hex);
+  const ok = await writeBLE(data);
+  if (ok) {
+    pktCount++;
+    document.getElementById('t-pkt').textContent = pktCount;
+    document.getElementById('t-lastcmd').textContent = hex;
+  }
+  return ok;
+}
+
+async function sendStopReliable() {
+  // 放開時多送幾次 STOP，確保就算某一筆寫入衝突失敗，後面還有機會補上。
+  for (let i = 0; i < 3; i++) {
+    const ok = await sendNamedCmd('STOP');
+    if (!ok) break;
+    await new Promise(r => setTimeout(r, 20));
+  }
+}
+
+// ── BLE Connect ───────────────────────────────────────────────
+async function toggleConnect() {
+  if (connected) { disconnect(); return; }
+  setStatus('connecting');
+  try {
+    const opts = cfg.namePrefix.trim()
+      ? { filters: [{ namePrefix: cfg.namePrefix.trim() }], optionalServices: [cfg.serviceUUID] }
+      : { acceptAllDevices: true, optionalServices: [cfg.serviceUUID] };
+
+    device = await navigator.bluetooth.requestDevice(opts);
+    device.addEventListener('gattserverdisconnected', onDisconnect);
+    const server = await device.gatt.connect();
+
+    let svc;
+    try { svc = await server.getPrimaryService(cfg.serviceUUID); }
+    catch { svc = await server.getPrimaryService(parseInt(cfg.serviceUUID.replace(/-/g,'').slice(4,8), 16)); }
+
+    try { char = await svc.getCharacteristic(cfg.charUUID); }
+    catch { char = await svc.getCharacteristic(parseInt(cfg.charUUID.replace(/-/g,'').slice(4,8), 16)); }
+
+    connected = true;
+    setStatus('connected');
+    addLog(`PAIRED: ${device.name}`);
+  } catch(e) {
+    setStatus('offline');
+    addLog(`ERR: ${e.message.slice(0,45)}`);
+  }
+}
+
+function disconnect() {
+  if (device && device.gatt.connected) device.gatt.disconnect();
+  onDisconnect();
+}
+function onDisconnect() {
+  connected = false; char = null;
+  setStatus('offline'); addLog('DISCONNECTED');
+  stopActiveDir();
+}
+
+let reconnecting = false;
+async function attemptReconnect() {
+  if (reconnecting || !device) return;
+  reconnecting = true;
+  addLog('RECONNECTING...');
+  try {
+    setStatus('connecting');
+    const server = await device.gatt.connect();
+
+    let svc;
+    try { svc = await server.getPrimaryService(cfg.serviceUUID); }
+    catch { svc = await server.getPrimaryService(parseInt(cfg.serviceUUID.replace(/-/g,'').slice(4,8), 16)); }
+
+    try { char = await svc.getCharacteristic(cfg.charUUID); }
+    catch { char = await svc.getCharacteristic(parseInt(cfg.charUUID.replace(/-/g,'').slice(4,8), 16)); }
+
+    connected = true;
+    setStatus('connected');
+    addLog('RECONNECTED');
+    await sendStopReliable();
+  } catch(e) {
+    setStatus('offline');
+    addLog('RECONNECT FAIL: ' + e.message.slice(0,30));
+  } finally {
+    reconnecting = false;
+  }
+}
+
+// ── D-Pad 方向：長按持續送出 ──────────────────────────────────
+const DIRS = ['FWD','REV','LEFT','RIGHT'];
+let activeDir = null, dirInterval = null;
+
+function setDpadVisual(dir) {
+  DIRS.forEach(d => document.getElementById('dpad-'+d).classList.remove('active'));
+  document.getElementById('dpad-STOP').classList.remove('active');
+  if (dir) document.getElementById('dpad-'+dir).classList.add('active');
+  else document.getElementById('dpad-STOP').classList.add('active');
+  document.getElementById('t-dir').textContent = dir || 'STOP';
+}
+
+function startDir(dir) {
+  if (activeDir === dir) return;
+  activeDir = dir;
+  setDpadVisual(dir);
+  clearInterval(dirInterval);
+  sendNamedCmd(dir);
+  dirInterval = setInterval(() => sendNamedCmd(dir), Math.round(1000 / cfg.hz));
+}
+
+function stopActiveDir() {
+  if (!activeDir) { setDpadVisual(null); return; }
+  activeDir = null;
+  clearInterval(dirInterval); dirInterval = null;
+  setDpadVisual(null);
+  if (char) sendStopReliable();
+}
+
+DIRS.forEach(dir => {
+  const el = document.getElementById('dpad-'+dir);
+  el.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    el.setPointerCapture(e.pointerId);
+    startDir(dir);
+  });
+  el.addEventListener('pointerup',    () => stopActiveDir());
+  el.addEventListener('pointercancel',() => stopActiveDir());
+  el.addEventListener('pointerleave', () => { if (activeDir === dir) stopActiveDir(); });
+});
+document.getElementById('dpad-STOP').addEventListener('pointerdown', (e) => {
+  e.preventDefault();
+  stopActiveDir();
+});
+
+// ── 特殊動作：單次點擊 ─────────────────────────────────────────
+['SP1','SP2','SP3','SP4'].forEach(name => {
+  const el = document.getElementById('sp-'+name);
+  el.addEventListener('pointerdown', async (e) => {
+    e.preventDefault();
+    el.classList.add('pressed');
+    await sendNamedCmd(name);
+    setTimeout(() => el.classList.remove('pressed'), 150);
+  });
+});
+
+// ── Send Rate 即時滑桿（不需開設定也能調） ───────────────────
+function updateHzLive(v) {
+  cfg.hz = parseInt(v);
+  document.getElementById('hz-live-display').textContent = v + ' Hz';
+  document.getElementById('hz-slider').style.setProperty('--pct', ((v-5)/35*100).toFixed(1)+'%');
+  if (activeDir) { clearInterval(dirInterval); dirInterval = setInterval(() => sendNamedCmd(activeDir), Math.round(1000/cfg.hz)); }
+  localStorage.setItem('rc_config_dpad', JSON.stringify(cfg));
+}
+updateHzLive(cfg.hz);
+
+// ── Gamepad ───────────────────────────────────────────────────
+let gamepadIndex = null, gpLoop = null;
+window.addEventListener('gamepadconnected', (e) => {
+  gamepadIndex = e.gamepad.index;
+  document.getElementById('gp-badge').classList.add('visible');
+  addLog(`GAMEPAD: ${e.gamepad.id.slice(0,28)}`);
+  if (!gpLoop) gpLoop = requestAnimationFrame(readGamepad);
+});
+window.addEventListener('gamepaddisconnected', (e) => {
+  if (e.gamepad.index !== gamepadIndex) return;
+  gamepadIndex = null;
+  document.getElementById('gp-badge').classList.remove('visible');
+  addLog('GAMEPAD DISCONNECTED');
+  if (gpLoop) { cancelAnimationFrame(gpLoop); gpLoop = null; }
+  stopActiveDir();
+});
+function gamepadDirFromAxes(gp) {
+  const dz = cfg.deadZone;
+  const x = gp.axes[cfg.axisX] || 0;
+  const y = gp.axes[cfg.axisY] || 0;
+  if (gp.buttons[12] && gp.buttons[12].pressed) return 'FWD';
+  if (gp.buttons[13] && gp.buttons[13].pressed) return 'REV';
+  if (gp.buttons[14] && gp.buttons[14].pressed) return 'LEFT';
+  if (gp.buttons[15] && gp.buttons[15].pressed) return 'RIGHT';
+  if (Math.abs(x) < dz && Math.abs(y) < dz) return null;
+  if (Math.abs(x) > Math.abs(y)) return x > 0 ? 'RIGHT' : 'LEFT';
+  return y < 0 ? 'FWD' : 'REV';
+}
+function readGamepad() {
+  gpLoop = requestAnimationFrame(readGamepad);
+  if (gamepadIndex === null) return;
+  const gp = navigator.getGamepads()[gamepadIndex];
+  if (!gp) return;
+  const dir = gamepadDirFromAxes(gp);
+  if (dir) startDir(dir);
+  else if (activeDir) stopActiveDir();
+}
+
+// ── Settings ──────────────────────────────────────────────────
+function openSettings() {
+  document.getElementById('cfg-service').value = cfg.serviceUUID;
+  document.getElementById('cfg-char').value = cfg.charUUID;
+  document.getElementById('cfg-nameprefix').value = cfg.namePrefix;
+  document.getElementById('cfg-cmd-fwd').value = cfg.cmdFWD;
+  document.getElementById('cfg-cmd-rev').value = cfg.cmdREV;
+  document.getElementById('cfg-cmd-left').value = cfg.cmdLEFT;
+  document.getElementById('cfg-cmd-right').value = cfg.cmdRIGHT;
+  document.getElementById('cfg-cmd-stop').value = cfg.cmdSTOP;
+  document.getElementById('cfg-cmd-sp1').value = cfg.cmdSP1;
+  document.getElementById('cfg-cmd-sp2').value = cfg.cmdSP2;
+  document.getElementById('cfg-cmd-sp3').value = cfg.cmdSP3;
+  document.getElementById('cfg-cmd-sp4').value = cfg.cmdSP4;
+  document.getElementById('cfg-ax-x').value = cfg.axisX;
+  document.getElementById('cfg-ax-y').value = cfg.axisY;
+  const hz = document.getElementById('cfg-hz');
+  hz.value = cfg.hz; onHzChange(cfg.hz);
+  const dz = document.getElementById('cfg-dz');
+  dz.value = Math.round(cfg.deadZone * 100); onDzChange(dz.value);
+  document.getElementById('settings-overlay').classList.add('open');
+}
+function closeSettings() { document.getElementById('settings-overlay').classList.remove('open'); }
+function overlayClick(e) { if (e.target.id === 'settings-overlay') closeSettings(); }
+function onHzChange(v) {
+  document.getElementById('hz-display').textContent = v + ' Hz';
+  document.getElementById('cfg-hz').style.setProperty('--sp', ((v-5)/35*100).toFixed(1)+'%');
+}
+function onDzChange(v) {
+  document.getElementById('dz-display').textContent = (v/100).toFixed(2);
+  document.getElementById('cfg-dz').style.setProperty('--sp', (v/80*100).toFixed(1)+'%');
+}
+function saveSettings() {
+  cfg = {
+    serviceUUID: document.getElementById('cfg-service').value.trim().toLowerCase(),
+    charUUID:    document.getElementById('cfg-char').value.trim().toLowerCase(),
+    namePrefix:  document.getElementById('cfg-nameprefix').value.trim(),
+    hz:          parseInt(document.getElementById('cfg-hz').value),
+    axisX:       parseInt(document.getElementById('cfg-ax-x').value),
+    axisY:       parseInt(document.getElementById('cfg-ax-y').value),
+    deadZone:    parseInt(document.getElementById('cfg-dz').value) / 100,
+    cmdFWD:   document.getElementById('cfg-cmd-fwd').value.trim().toUpperCase(),
+    cmdREV:   document.getElementById('cfg-cmd-rev').value.trim().toUpperCase(),
+    cmdLEFT:  document.getElementById('cfg-cmd-left').value.trim().toUpperCase(),
+    cmdRIGHT: document.getElementById('cfg-cmd-right').value.trim().toUpperCase(),
+    cmdSTOP:  document.getElementById('cfg-cmd-stop').value.trim().toUpperCase(),
+    cmdSP1:   document.getElementById('cfg-cmd-sp1').value.trim().toUpperCase(),
+    cmdSP2:   document.getElementById('cfg-cmd-sp2').value.trim().toUpperCase(),
+    cmdSP3:   document.getElementById('cfg-cmd-sp3').value.trim().toUpperCase(),
+    cmdSP4:   document.getElementById('cfg-cmd-sp4').value.trim().toUpperCase(),
+  };
+  localStorage.setItem('rc_config_dpad', JSON.stringify(cfg));
+  document.getElementById('hz-slider').value = cfg.hz;
+  updateHzLive(cfg.hz);
+  closeSettings();
+  addLog('CONFIG SAVED ✓');
+}
+function resetSettings() {
+  if (!confirm('恢復所有預設值？')) return;
+  cfg = Object.assign({}, DEFAULTS);
+  localStorage.removeItem('rc_config_dpad');
+  openSettings();
+  addLog('CONFIG RESET');
+}
+
+// ── Status ────────────────────────────────────────────────────
+function setStatus(s) {
+  document.getElementById('dot').className = 'status-dot' +
+    (s==='connected' ? ' connected' : s==='connecting' ? ' connecting' : '');
+  document.getElementById('connect-btn').textContent = s==='connected' ? 'DISCONNECT' : 'CONNECT';
+  document.getElementById('connect-btn').disabled = s === 'connecting';
+}
+
+const logEl = document.getElementById('log');
+function addLog(msg) {
+  const line = document.createElement('div');
+  line.className = 'log-line new';
+  line.textContent = '> ' + msg;
+  logEl.appendChild(line);
+  while (logEl.children.length > 3) logEl.removeChild(logEl.firstChild);
+  setTimeout(() => line.classList.remove('new'), 800);
+}
+
+// 安全防護：頁面被切到背景 / 離開時，一律送出 STOP，避免手機鎖屏後車子繼續跑。
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) stopActiveDir();
+});
+window.addEventListener('blur', () => stopActiveDir());
+</script>
+</body>
+</html>
